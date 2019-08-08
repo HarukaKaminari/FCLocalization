@@ -1,0 +1,2 @@
+# FCLocalization
+FC汉化
