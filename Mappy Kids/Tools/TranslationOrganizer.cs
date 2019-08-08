@@ -14,8 +14,8 @@ namespace TranslationOrganizer
         // 不重复字符表
         public static List<List<char>> s_UniqueChars;
         // 文本bank表
-        public static List<List<string>> s_TextBanks;
-
+        public static List<List<char>> s_TextBanks;
+        // 每个bank（严格来说应该是每两个bank）最多允许的字符个数
         private static readonly int MAX_UNIQUE_CHAR_COUNT = 30;
 
         public static void Start(string TranslationFileName)
@@ -57,8 +57,10 @@ namespace TranslationOrganizer
                 if(uniqueChars.Count > 0)
                     s_UniqueChars.Add(uniqueChars);
             }
-            // 不重复字符列表进行合并
+            // 不重复字符列表进行合并，从而获得bank字符表
             MergeUniqueChars();
+            // 重建翻译文本列表！
+            RebuildTranslationTable();
         }
 
         /// <summary>
@@ -188,10 +190,65 @@ namespace TranslationOrganizer
                     return 0;
             });
             // 尝试合并
-            for(int i = 0; i < s_UniqueChars.Count; ++i)
+            List<List<char>> tmpUniqueChars = new List<List<char>>();
+            int curIndex = 0;
+            while (curIndex <= s_UniqueChars.Count)
             {
-
+                // 从不重复字符表中取出第0号元素，添加到临时列表中
+                tmpUniqueChars.Add(s_UniqueChars[0]);
+                // 不重复字符表删除第0号元素
+                s_UniqueChars.RemoveAt(0);
+                // 尝试从剩下的不重复字符表中取元素，并添加到临时列表的当前列中
+                while (true)
+                {
+                    bool isManipulated = false;
+                    for (int i = 0; i < s_UniqueChars.Count; ++i)
+                    {
+                        List<char> mergedItem = TryMerging(tmpUniqueChars[curIndex], s_UniqueChars[i]);
+                        if(mergedItem != null)
+                        {
+                            tmpUniqueChars[curIndex] = mergedItem;
+                            s_UniqueChars.RemoveAt(i);
+                            isManipulated = true;
+                            break;
+                        }
+                    }
+                    if (!isManipulated)
+                    {
+                        curIndex++;
+                        break;
+                    }
+                }
             }
+            // 合并完成！
+            s_TextBanks = tmpUniqueChars;
+        }
+
+        /// <summary>
+        /// 尝试合并两个不重复列表项。如果合并成功，则返回合并好的列表项；如果合并失败，则返回null
+        /// </summary>
+        /// <param name="original">原始列表项</param>
+        /// <param name="newItem">企图合并进来的列表项</param>
+        /// <returns>合并好的列表项</returns>
+        private static List<char> TryMerging(List<char> original, List<char> newItem)
+        {
+            foreach(char c in newItem)
+            {
+                if (!original.Contains(c))
+                {
+                    original.Add(c);
+                }
+            }
+            if (original.Count > MAX_UNIQUE_CHAR_COUNT)
+                return null;
+            else
+                return original;
+        }
+
+
+        private static void RebuildTranslationTable()
+        {
+            
         }
     }
 }
