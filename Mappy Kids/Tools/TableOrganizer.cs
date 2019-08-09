@@ -84,7 +84,7 @@ namespace TranslationOrganizer
         /// </summary>
         /// <param name="addr">指定地址（0x8000~0xBFFF）</param>
         /// <returns>绝对地址</returns>
-        private static int GetAbsoluteAddress(int addr)
+        public static int GetAbsoluteAddress(int addr)
         {
             if(addr >= 0x8000 && addr <= 0x9FFF)
             {
