@@ -19,7 +19,7 @@ namespace TranslationOrganizer
         // 新Nametable
         private static Byte[] s_NewNameTable;
         // PatternTable所在位置
-        private static readonly int[] PAT_ADDR = { 0x3F800, 0x3FC00 };
+        private static readonly int[] PAT_ADDR = { 0x20000, 0x20400 };
 
         public static void Start(string ROMFileName, string TileFileName)
         {
