@@ -184,7 +184,7 @@ namespace TranslationOrganizer
         {
             Bitmap ret = new Bitmap(128, 64, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
             Graphics g = Graphics.FromImage(ret);
-            g.Clear(Color.FromArgb(TileCreator.COLOR0));
+            g.Clear(TileCreator.COLOR0);
             for(int i = 0x80; i < 0x100; ++i)
             {
                 if (s_TileArray.ContainsKey((Byte)i))
