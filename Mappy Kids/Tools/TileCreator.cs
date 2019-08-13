@@ -9,11 +9,13 @@ namespace TranslationOrganizer
 {
     class TileCreator
     {
-        public static readonly int COLOR0 = 0x000000;
-        public static readonly int COLOR1 = 0xFFFFFF;
-        public static readonly int COLOR2 = 0xFF0000;
-        public static readonly int COLOR3 = 0x00FF00;
-        public static readonly int[] VALID_COLORS = { COLOR0, COLOR1, COLOR2, COLOR3 };
+        public static readonly Color COLOR0 = Color.Black;
+        public static readonly Color COLOR1 = Color.White;
+        public static readonly Color COLOR2 = Color.Red;
+        public static readonly Color COLOR3 = Color.Green;
+        public static readonly Color[] VALID_COLORS = { COLOR0, COLOR1, COLOR2, COLOR3 };
+
+        private static Dictionary<char, Bitmap> asciiImgs = null;
 
         public static Byte[] Bitmap2Data(Bitmap img)
         {
@@ -28,7 +30,7 @@ namespace TranslationOrganizer
             {
                 for(int x = 0; x < img.Width / 8; ++x)
                 {
-                    int[] _pixels = Bitmap2Tile(img, x, y);
+                    Color[] _pixels = Bitmap2Tile(img, x, y);
                     Byte[] _data = Tile2Data(_pixels);
                     data.AddRange(_data);
                 }
@@ -42,15 +44,15 @@ namespace TranslationOrganizer
         /// <param name="img">图片。宽高必须为8的倍数</param>
         /// <param name="x">x坐标。单位是tile</param>
         /// <param name="y">y坐标。单位是tile</param>
-        /// <returns>像素数组。这个数组必定是拥有64个元素的int数组，每个元素代表一个像素的ARGB颜色值</returns>
-        private static int[] Bitmap2Tile(Bitmap img, int x, int y)
+        /// <returns>像素数组。这个数组必定是拥有64个元素的Color数组，每个元素代表一个像素的颜色</returns>
+        private static Color[] Bitmap2Tile(Bitmap img, int x, int y)
         {
-            List<int> pixels = new List<int>();
+            List<Color> pixels = new List<Color>();
             for(int _y = 0; _y < 8; ++_y)
             {
                 for(int _x = 0; _x < 8; ++_x)
                 {
-                    int c = img.GetPixel(x * 8 + _x, y * 8 + _y).ToArgb() & 0xFFFFFF;
+                    Color c = img.GetPixel(x * 8 + _x, y * 8 + _y);
                     pixels.Add(c);
                 }
             }
@@ -59,9 +61,9 @@ namespace TranslationOrganizer
         /// <summary>
         /// 将tile的所有像素转成tile数据
         /// </summary>
-        /// <param name="pixels">所有的像素颜色。这是一个拥有64个元素的int数组，每个元素即为像素的ARGB颜色值</param>
+        /// <param name="pixels">所有的像素颜色。这是一个拥有64个元素的Color数组，每个元素即为像素的颜色</param>
         /// <returns>tile数据</returns>
-        private static Byte[] Tile2Data(int[] pixels)
+        private static Byte[] Tile2Data(Color[] pixels)
         {
             List<Byte> data0 = new List<Byte>();
             List<Byte> data1 = new List<Byte>();
@@ -71,12 +73,12 @@ namespace TranslationOrganizer
                 plane[0] = plane[1] = 0;
                 for(int x = 0; x < 8; ++x)
                 {
-                    int c = pixels[x + y * 8];
+                    Color c = pixels[x + y * 8];
                     // 查表获得颜色索引
                     int idx = 0;
                     for(idx = 0; idx < VALID_COLORS.Length; ++idx)
                     {
-                        if(c == (VALID_COLORS[idx] & 0xFFFFFF))
+                        if(c.ToArgb() == VALID_COLORS[idx].ToArgb())
                         {
                             break;
                         }
@@ -108,66 +110,106 @@ namespace TranslationOrganizer
             return value / 8 * 8 == value;
         }
 
-        public static void Test()
+        private static void CreateASCIIImgs()
         {
-            string ROMFileName = "D:/Mesen-0.9.8/bin/x64/Release/Roms/Mappy Kids (J).nes";
+            if(asciiImgs == null)
+            {
+                char[] chars = new char[] {
+                    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+                    'A', 'B', 'C', 'D', 'E', 'F', 'G',
+                    'H','I','J','K','L','M','N',
+                    'O','P','Q','R','S','T',
+                    'U','V','W','X','Y','Z',
+                };
+                int[] x = new int[] {
+                    0,1,2,3,4,5,6,7,8,9,
+                    1,2,3,4,5,6,7,
+                    8,9,10,11,12,13,14,
+                    15,0,1,2,3,4,
+                    5,6,7,8,9,10,
+                };
+                int[] y = new int[] {
+                    0,0,0,0,0,0,0,0,0,0,
+                    4,4,4,4,4,4,4,
+                    4,4,4,4,4,4,4,
+                    4,5,5,5,5,5,
+                    5,5,5,5,5,5,
+                };
+                asciiImgs = new Dictionary<char, Bitmap>();
+                for(int i = 0; i < chars.Length; ++i)
+                {
+                    Bitmap img = new Bitmap(8, 8, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+                    Graphics g = Graphics.FromImage(img);
+                    g.Clear(COLOR0);
+                    g.DrawImage(Properties.Resources.ASCII, new Rectangle(0, 0, 8, 8), new Rectangle(x[i] * 8, (y[i] + 8) * 8, 8, 8), GraphicsUnit.Pixel);
+                    asciiImgs.Add(chars[i], img);
+                }
+            }
+        }
+
+        public static void GeneratePatternTable(ref Byte[] chrData, int bankNo, string uniqueChars, string uniqueASCII)
+        {
+            CreateASCIIImgs();
             // 生成一张图
             Bitmap canvas = new Bitmap(128, 64, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
             Graphics g = Graphics.FromImage(canvas);
             Bitmap charImg = new Bitmap(16, 16, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
             Graphics charG = Graphics.FromImage(charImg);
             charG.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
-            string str = "你很努力嘛！想要什么礼物吗？";
             Font font = new Font("宋体", 9);
-            Brush brush = new SolidBrush(Color.FromArgb(255, 255, 255));
-            int x = 0, y = 0;
-            foreach(char c in str)
+            Brush brush = new SolidBrush(COLOR3);
+            int idx = 0;
+            foreach (char c in uniqueChars)
             {
-                charG.Clear(Color.FromArgb(0, 0, 0));
-                charG.DrawString(c.ToString(), font, brush, new Point(0, 0));
-                g.DrawImage(charImg, new Rectangle(x + 0, y + 0, 8, 8), new Rectangle(0, 0, 8, 8), GraphicsUnit.Pixel);
-                g.DrawImage(charImg, new Rectangle(x + 8, y + 0, 8, 8), new Rectangle(0, 8, 8, 8), GraphicsUnit.Pixel);
-                g.DrawImage(charImg, new Rectangle(x + 16, y + 0, 8, 8), new Rectangle(8, 0, 8, 8), GraphicsUnit.Pixel);
-                g.DrawImage(charImg, new Rectangle(x + 24, y + 0, 8, 8), new Rectangle(8, 8, 8, 8), GraphicsUnit.Pixel);
-                x += 32;
-                if(x >= 128)
-                {
-                    x = 0;
-                    y += 8;
-                }
+                int x = ((TranslationOrganizer.s_CharOffsets[idx] - 0x60) & 3) * 32;
+                int y = ((TranslationOrganizer.s_CharOffsets[idx] - 0x60) >> 2) * 8;
+                charG.Clear(COLOR0);
+                charG.DrawString(c.ToString(), font, brush, new Point(0, 4));
+                g.DrawImage(charImg, new Rectangle(x + 0, y, 8, 8), new Rectangle(0, 0, 8, 8), GraphicsUnit.Pixel);
+                g.DrawImage(charImg, new Rectangle(x + 8, y, 8, 8), new Rectangle(0, 8, 8, 8), GraphicsUnit.Pixel);
+                g.DrawImage(charImg, new Rectangle(x + 16, y, 8, 8), new Rectangle(8, 0, 8, 8), GraphicsUnit.Pixel);
+                g.DrawImage(charImg, new Rectangle(x + 24, y, 8, 8), new Rectangle(8, 8, 8, 8), GraphicsUnit.Pixel);
+                idx++;
             }
+            idx = 0;
+            foreach(char c in uniqueASCII)
+            {
+                int x = ((TranslationOrganizer.s_ASCIIOffsets[idx] - 0x80) & 15) * 8;
+                int y = ((TranslationOrganizer.s_ASCIIOffsets[idx] - 0x80) >> 4) * 8;
+                if (asciiImgs.ContainsKey(c))
+                {
+                    g.DrawImage(asciiImgs[c], new Rectangle(x, y, 8, 8), new Rectangle(0, 0, 8, 8), GraphicsUnit.Pixel);
+                }
+                idx++;
+            }
+            canvas.Save(bankNo + ".png", System.Drawing.Imaging.ImageFormat.Png);
             // 生成PatternTable
             Byte[] data = Bitmap2Data(canvas);
-            // 写入CHR Bank $80
-            Byte[] chrData = Common.GetCHRData(ROMFileName);
-            for(int i = 0; i < data.Length; ++i)
+            // 写入CHR Bank
+            for (int i = 0; i < data.Length; ++i)
             {
-                chrData[0x20000 + i] = data[i];
+                chrData[0x20000 + (bankNo - 1) * 2048 + i] = data[i];
             }
-            // 修改文本
-            Byte[] prgData = Common.GetPRGData(ROMFileName);
-            int addr = TableOrganizer.GetAbsoluteAddress(0xB5A5);
-            prgData[addr + 0] = 0xF1;
-            prgData[addr + 1] = 0x20;
-            prgData[addr + 2] = 0x60;
-            prgData[addr + 3] = 0x61;
-            prgData[addr + 4] = 0x62;
-            prgData[addr + 5] = 0x63;
-            prgData[addr + 6] = 0x64;
-            prgData[addr + 7] = 0x65;
-            prgData[addr + 8] = 0xF0;
-            prgData[addr + 9] = 0x66;
-            prgData[addr + 10] = 0x67;
-            prgData[addr + 11] = 0x68;
-            prgData[addr + 12] = 0x69;
-            prgData[addr + 13] = 0x6A;
-            prgData[addr + 14] = 0x6B;
-            prgData[addr + 15] = 0x6C;
-            prgData[addr + 16] = 0x6D;
-            prgData[addr + 17] = 0xF2;
-            prgData[addr + 18] = 0xF1;
-            // 给ROM打补丁
-            Common.PatchROM(ROMFileName, prgData, chrData);
+        }
+        
+        public static Byte[] CreateGiantFont(char[] cnChars)
+        {
+            Bitmap img = new Bitmap(128, 32, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            Graphics g = Graphics.FromImage(img);
+            g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.None;
+            g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.SingleBitPerPixel;
+            g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
+            g.Clear(COLOR0);
+            Font font = new Font(new FontFamily("楷体"), 13, FontStyle.Bold);
+            for(int i = 0; i < cnChars.Length; ++i)
+            {
+                Brush brush = new SolidBrush(i < 2 ? COLOR2 : COLOR3);
+                if (cnChars[i].Equals('布'))
+                    cnChars[i] = '旗';
+                g.DrawString(cnChars[i].ToString(), font, brush, new Point((Hataage.indices[i] & 7) * 16 - 4, (Hataage.indices[i] >> 3) * 16 - 1));
+            }
+            //img.Save("GiantText.png", System.Drawing.Imaging.ImageFormat.Png);
+            return Bitmap2Data(img);
         }
     }
 }
