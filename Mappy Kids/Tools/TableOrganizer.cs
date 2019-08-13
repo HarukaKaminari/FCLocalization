@@ -83,10 +83,15 @@ namespace TranslationOrganizer
         /// 从指定地址计算绝对地址。注意，目前指定地址只允许在0x8000到0xBFFF之间
         /// </summary>
         /// <param name="addr">指定地址（0x8000~0xBFFF）</param>
+        /// <param name="bank">指定bank。-1代表使用本类定义的默认bank</param>
         /// <returns>绝对地址</returns>
-        public static int GetAbsoluteAddress(int addr)
+        public static int GetAbsoluteAddress(int addr, int bank = -1)
         {
-            if(addr >= 0x8000 && addr <= 0x9FFF)
+            if(bank >= 0)
+            {
+                return bank * 8 * 1024 + (addr & (8 * 1024 - 1));
+            }
+            else if (addr >= 0x8000 && addr <= 0x9FFF)
             {
                 return PRGBANK_8000_9FFF * 8 * 1024 + (addr & (8 * 1024 - 1));
             }
