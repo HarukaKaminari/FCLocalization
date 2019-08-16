@@ -10,9 +10,9 @@ namespace TranslationOrganizer
     class TileCreator
     {
         public static readonly Color COLOR0 = Color.Black;
-        public static readonly Color COLOR1 = Color.White;
+        public static readonly Color COLOR1 = Color.Green;
         public static readonly Color COLOR2 = Color.Red;
-        public static readonly Color COLOR3 = Color.Green;
+        public static readonly Color COLOR3 = Color.White;
         public static readonly Color[] VALID_COLORS = { COLOR0, COLOR1, COLOR2, COLOR3 };
 
         private static Dictionary<char, Bitmap> asciiImgs = null;
@@ -115,25 +115,9 @@ namespace TranslationOrganizer
             if(asciiImgs == null)
             {
                 char[] chars = new char[] {
-                    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
-                    'A', 'B', 'C', 'D', 'E', 'F', 'G',
-                    'H','I','J','K','L','M','N',
-                    'O','P','Q','R','S','T',
-                    'U','V','W','X','Y','Z',
-                };
-                int[] x = new int[] {
-                    0,1,2,3,4,5,6,7,8,9,
-                    1,2,3,4,5,6,7,
-                    8,9,10,11,12,13,14,
-                    15,0,1,2,3,4,
-                    5,6,7,8,9,10,
-                };
-                int[] y = new int[] {
-                    0,0,0,0,0,0,0,0,0,0,
-                    4,4,4,4,4,4,4,
-                    4,4,4,4,4,4,4,
-                    4,5,5,5,5,5,
-                    5,5,5,5,5,5,
+                    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f',
+                    ' ', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O',
+                    'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
                 };
                 asciiImgs = new Dictionary<char, Bitmap>();
                 for(int i = 0; i < chars.Length; ++i)
@@ -141,7 +125,7 @@ namespace TranslationOrganizer
                     Bitmap img = new Bitmap(8, 8, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
                     Graphics g = Graphics.FromImage(img);
                     g.Clear(COLOR0);
-                    g.DrawImage(Properties.Resources.ASCII, new Rectangle(0, 0, 8, 8), new Rectangle(x[i] * 8, (y[i] + 8) * 8, 8, 8), GraphicsUnit.Pixel);
+                    g.DrawImage(Properties.Resources.ASCII, new Rectangle(0, 0, 8, 8), new Rectangle((i & 15) * 8, (i >> 4) * 8, 8, 8), GraphicsUnit.Pixel);
                     asciiImgs.Add(chars[i], img);
                 }
             }
@@ -150,36 +134,44 @@ namespace TranslationOrganizer
         public static void GeneratePatternTable(ref Byte[] chrData, int bankNo, string uniqueChars, string uniqueASCII)
         {
             CreateASCIIImgs();
-            // 生成一张图
+            // 创建pattern画布
             Bitmap canvas = new Bitmap(128, 64, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
             Graphics g = Graphics.FromImage(canvas);
+            // 绘制4个图标（未定义、是否选择箭头、空格、翻页箭头）
+            g.Clear(COLOR0);
+            Bitmap[] imgIcons = new Bitmap[] { null, Properties.Resources.selectionArrow, null, Properties.Resources.nextArrow };
+            for(int i = 0; i < imgIcons.Length; ++i)
+            {
+                if(imgIcons[i] != null)
+                    g.DrawImage(imgIcons[i], new Rectangle(96 + i * 8, 56, 8, 8), new Rectangle(0, 0, 8, 8), GraphicsUnit.Pixel);
+            }
+            // 创建文字画布
             Bitmap charImg = new Bitmap(16, 16, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
             Graphics charG = Graphics.FromImage(charImg);
             charG.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
             Font font = new Font("宋体", 9);
             Brush brush = new SolidBrush(COLOR3);
             int idx = 0;
+            // 先绘制所有的ASCII字符
+            foreach (char c in uniqueASCII)
+            {
+                if (asciiImgs.ContainsKey(c))
+                {
+                    g.DrawImage(asciiImgs[c], new Rectangle(idx * 8, (idx >> 5) * 8, 8, 8), new Rectangle(0, 0, 8, 8), GraphicsUnit.Pixel);
+                }
+                idx++;
+            }
+            idx = (int)Math.Ceiling((float)idx / 4.0);
+            // 再绘制所有的汉字
             foreach (char c in uniqueChars)
             {
-                int x = ((TranslationOrganizer.s_CharOffsets[idx] - 0x60) & 3) * 32;
-                int y = ((TranslationOrganizer.s_CharOffsets[idx] - 0x60) >> 2) * 8;
                 charG.Clear(COLOR0);
                 charG.DrawString(c.ToString(), font, brush, new Point(0, 4));
+                int x = (idx & 3) * 32, y = (idx >> 2) * 8;
                 g.DrawImage(charImg, new Rectangle(x + 0, y, 8, 8), new Rectangle(0, 0, 8, 8), GraphicsUnit.Pixel);
                 g.DrawImage(charImg, new Rectangle(x + 8, y, 8, 8), new Rectangle(0, 8, 8, 8), GraphicsUnit.Pixel);
                 g.DrawImage(charImg, new Rectangle(x + 16, y, 8, 8), new Rectangle(8, 0, 8, 8), GraphicsUnit.Pixel);
                 g.DrawImage(charImg, new Rectangle(x + 24, y, 8, 8), new Rectangle(8, 8, 8, 8), GraphicsUnit.Pixel);
-                idx++;
-            }
-            idx = 0;
-            foreach(char c in uniqueASCII)
-            {
-                int x = ((TranslationOrganizer.s_ASCIIOffsets[idx] - 0x80) & 15) * 8;
-                int y = ((TranslationOrganizer.s_ASCIIOffsets[idx] - 0x80) >> 4) * 8;
-                if (asciiImgs.ContainsKey(c))
-                {
-                    g.DrawImage(asciiImgs[c], new Rectangle(x, y, 8, 8), new Rectangle(0, 0, 8, 8), GraphicsUnit.Pixel);
-                }
                 idx++;
             }
             canvas.Save(bankNo + ".png", System.Drawing.Imaging.ImageFormat.Png);
