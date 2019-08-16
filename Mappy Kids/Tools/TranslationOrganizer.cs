@@ -12,13 +12,16 @@ namespace TranslationOrganizer
         // 翻译文本表
         public static List<string> s_TableTranslation;
         // 每个bank（严格来说应该是每两个bank）最多允许的字符个数
-        private static readonly int MAX_UNIQUE_CHAR_COUNT = 29;
+        private static readonly int MAX_UNIQUE_CHAR_COUNT = 31;
+
+        public static readonly string FULL_DIGITAL_MAGIC_STR = "丂丄丅";
 
         private struct TextBlockInfo
         {
             public int bankNo; // 文本bank号（0为默认bank（0x7E, 0x7F））
             public string str; // 文本内容
             public List<Byte> data; // 文本字节码
+            public bool isFullDigitalMode;    // 这句文本所在的bank是否包含全部10个数字？
         }
         private struct TranslationInfo
         {
@@ -39,24 +42,7 @@ namespace TranslationOrganizer
             { "[NEXT]", 0xF2 },
             { "[FIN]", 0xFF },
         };
-
-        public static List<Byte> s_CharOffsets = new List<Byte>
-        {
-            0x60, 0x61, 0x62, 0x63,
-            0x64, 0x65, 0x66, 0x67,
-            0x68, 0x69, 0x6A, 0x6B,
-            0x6C, 0x6D, 0x6E, 0x6F,
-            0x70, 0x71, 0x72, 0x73,
-            0x74, 0x75, 0x76, 0x77,
-            0x78, 0x79, 0x7A,
-            0x7C,       0x7E,
-        };
-
-        public static List<Byte> s_ASCIIOffsets = new List<Byte>
-        {
-            0xEC, 0xED, 0xEE, 0xF4, 0xF5, 0xFC, 0xFD, 0xFE, 0xFF
-        };
-
+        
         public static void Start(string TranslationFileName, string ROMFileName)
         {
             LoadTranslationTable(TranslationFileName);
@@ -124,6 +110,7 @@ namespace TranslationOrganizer
                 {
                     TextBlockInfo ti = new TextBlockInfo();
                     ti.bankNo = findBankNo(str);
+                    ti.isFullDigitalMode = contents[4].Equals("D");
                     ti.str = str;
                     ti.data = new List<Byte>();
                     info.textBlocks.Add(ti);
@@ -147,7 +134,7 @@ namespace TranslationOrganizer
             }
             return 0;
         }
-
+        
         /// <summary>
         /// 文本处理
         /// </summary>
@@ -173,6 +160,11 @@ namespace TranslationOrganizer
                             s_DicUniqueChars.Add(ti.bankNo, string.Empty);
                         if (!s_DicUniqueASCII.ContainsKey(ti.bankNo))
                             s_DicUniqueASCII.Add(ti.bankNo, string.Empty);
+                        // 首先处理fullDigitalMode
+                        if (ti.isFullDigitalMode)
+                        {
+                            s_DicUniqueASCII[ti.bankNo] = "0123456789";
+                        }
                         s_DicUniqueChars[ti.bankNo] = GetUniqueChars(s_DicUniqueChars[ti.bankNo] + ti.str);
                         s_DicUniqueASCII[ti.bankNo] = GetUniqueASCII(s_DicUniqueASCII[ti.bankNo] + ti.str);
                         if (s_DicUniqueChars[ti.bankNo].Length > MAX_UNIQUE_CHAR_COUNT)
@@ -242,18 +234,18 @@ namespace TranslationOrganizer
                                         {
                                             if(c == ' ')
                                             {
-                                                ti.data.Add(0xEF);
+                                                ti.data.Add(0xFE);
                                             }
                                             else
                                             {
                                                 int offset = s_DicUniqueASCII[ti.bankNo].IndexOf(c);
-                                                ti.data.Add(s_ASCIIOffsets[offset]);
+                                                ti.data.Add((Byte)(offset + 0x80));
                                             }
                                         }
                                         else
                                         {
                                             int offset = s_DicUniqueChars[ti.bankNo].IndexOf(c);
-                                            ti.data.Add(s_CharOffsets[offset]);
+                                            ti.data.Add((Byte)(offset + 0x60));
                                         }
                                     }
                                     break;
@@ -318,19 +310,23 @@ namespace TranslationOrganizer
 
         private static void dump()
         {
-            foreach(TranslationInfo info in s_TranslationInfos)
+            //foreach(TranslationInfo info in s_TranslationInfos)
+            //{
+            //    string contents = string.Empty;
+            //    foreach(TextBlockInfo ti in info.textBlocks)
+            //    {
+            //        contents += ti.str;
+            //    }
+            //    string str = string.Format("{0},{1:X4},{2:X4},{3:X4},{4},{5}", info.group, info.addrLo, info.addrHi, info.addr, 1, contents);
+            //    Console.WriteLine(str);
+            //}
+            Dictionary<int, string> dic1Asc = s_DicUniqueChars.OrderBy(o => o.Key).ToDictionary(o => o.Key, p => p.Value);
+            foreach (KeyValuePair<int, string> kv in dic1Asc)
             {
-                string contents = string.Empty;
-                foreach(TextBlockInfo ti in info.textBlocks)
-                {
-                    contents += ti.str;
-                }
-                string str = string.Format("{0},{1:X4},{2:X4},{3:X4},{4},{5}", info.group, info.addrLo, info.addrHi, info.addr, 1, contents);
-                Console.WriteLine(str);
-            }
-            foreach(KeyValuePair<int, string> kv in s_DicUniqueChars)
-            {
-                Console.WriteLine(string.Format("{0},{1},{2}", kv.Key, kv.Value.Length, kv.Value));
+                Console.WriteLine(string.Format("{0},{1},{2}",
+                    kv.Key,
+                    kv.Value.Length + (int)Math.Ceiling((float)s_DicUniqueASCII[kv.Key].Length / 4.0),
+                    s_DicUniqueASCII[kv.Key] + kv.Value));
             }
         }
 
@@ -354,7 +350,15 @@ namespace TranslationOrganizer
                 foreach(TextBlockInfo ti in info.textBlocks)
                 {
                     for (int i = 0; i < ti.data.Count; ++i)
-                        prgData[addr + offset + i] = ti.data[i];
+                    {
+                        // 因为ASCII占据了最刚开始的若干个tile，所以这里要对汉字的idx进行偏移
+                        int offs = 0;
+                        if(ti.data[i] >= 0x60 && ti.data[i] <= 0x7F)
+                        {
+                            offs = (int)Math.Ceiling(s_DicUniqueASCII[ti.bankNo].Length / 4.0);
+                        }
+                        prgData[addr + offset + i] = (Byte)(ti.data[i] + offs);
+                    }
                     offset += ti.data.Count;
                 }
             }
