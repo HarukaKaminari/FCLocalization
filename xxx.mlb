@@ -1,0 +1,86 @@
+﻿P:E03D::STX $C000
+P:E042::STA $E000
+P:E046::STX $C000
+P:E04B::STX $E000
+P:E04F::STX $C000
+P:E052::STX $E000
+P:E056::STX $C000
+P:E059::STX $E000
+P:E10D::  LDA #$0A\n  STA $8000\n  LDA $0600\n  STA $A000
+P:E267::  LDA #$0A\n  STA $8000\n  LDA $0600\n  STA $A000
+P:E88B::STA $C000
+P:E890::STA $E000
+P:EA9D::STY $C000
+P:EAA0::STA $E000
+P:EAA6::STY $C000
+P:EAA9::STA $E000
+P:EAB2::STA $C000
+P:EAB7::STA $E000
+P:EAEA::STY $C000
+P:EAED::STA $E000
+P:EAF5::STY $C000
+P:EAF8::STA $E000
+P:EAFF::STY $C000
+P:EB02::STA $E000
+P:EB0C::STY $C000
+P:EB0F::STA $E000
+P:EE65::  LDA #$0B\n  STA $8000\n  LDA ($75),Y\n  STA $A000
+P:367EE::  LDA #$0C\n  STA $8000\n  LDA #$00\n  STA $A000
+P:367F5::Left: Vertical Mirroring. Right: Don't care
+P:3E045::  LDX #$0D\n  LDA #$00\n  LDY #$80\n  STX $8000\n  STA $A000\n  STY $A000\n  STA $A000\n  STX $8000\n  STA $A000\n  LDA #$0C\n  STA $8000\n  STX $A000
+P:3E04B::Enable IRQ
+P:3E04E::Disable IRQ
+P:3E051::Enable IRQ
+P:3E054::Vertical Mirroring
+P:3E058::Vertical Mirroring
+P:3E05E::Vertical Mirroring
+P:3E061::Vertical Mirroring
+P:3E9CD::  LDA #$0D\n  STA $8000\n  LDA #$00\n  STA $A000\n  LDA #$0E\n  STA $8000\n  LDA $EADA,Y\n  STA $A000\n  LDA #$0F\n  STA $8000\n  LDA $EADF,Y\n  STA $A000\n  LDA #$0D\n  STA $8000\n  LDA #$81\n  STA $A000
+P:3E9CF::Disable IRQ
+P:3E9D2::C = 0;
+P:3E9D5::A = 0xFF - [$EADA + [Y]] - C;
+P:3E9D8::A = 0xFF - [$EADA + [Y]] - C;
+P:3E9DB::C = 1;
+P:3E9DE::A = 0x7F - [$EADF + [Y]] - C;
+P:3E9E1::A |= 0x80;
+P:3E9E3::Fill IRQ Counter (upper 8bit), enable IRQ
+P:3E9E4::A |= 0x80;
+P:3E9E6::Set IRQ Counter (upper 8bit), enable IRQ
+P:3EA92::  LDA #$09\n  STA $8000\n  LDA #$07\n  STA $A000
+P:3EA9F::  LDA #$09\n  STA $8000\n  LDA $40\n  STA $A000\n  LDA #$0A\n  STA $8000\n  LDA $41\n  STA $A000
+P:3EAAD::  LDA $3F\n  STA $8000
+P:3EAEE::  LDA #$0D\n  STA $8000\n  LDA #$00\n  STA $A000
+P:3EAF3::Disable IRQ
+P:3F055::  STA $8000\n  STY $40\n  STY $A000
+P:3F06B::  LDA #$00\n  STA $8000\n  LDA $E1\n  STA $A000\n  LDA #$01\n  STA $8000\n  LDA $E2\n  STA $A000\n  LDA #$02\n  STA $8000\n  LDA $E3\n  STA $A000\n  LDA #$03\n  STA $8000\n  LDA $E4\n  STA $A000\n  LDA #$04\n  STA $8000\n  LDA $E5\n  STA $A000\n  LDA #$05\n  STA $8000\n  LDA $E6\n  STA $A000\n  LDA #$06\n  STA $8000\n  LDA $E7\n  STA $A000\n  LDA #$07\n  STA $8000\n  LDA $E8\n  STA $A000
+P:3F0A9:SetVerticalMirroring
+G:2000:PpuControl_2000:7  bit  0\n---- ----\nVPHB SINN\n|||| ||||\n|||| ||++- Base nametable address\n|||| ||    (0 = $2000; 1 = $2400; 2 = $2800; 3 = $2C00)\n|||| |+--- VRAM address increment per CPU read/write of PPUDATA\n|||| |     (0: add 1, going across; 1: add 32, going down)\n|||| +---- Sprite pattern table address for 8x8 sprites\n||||       (0: $0000; 1: $1000; ignored in 8x16 mode)\n|||+------ Background pattern table address (0: $0000; 1: $1000)\n||+------- Sprite size (0: 8x8; 1: 8x16)\n|+-------- PPU master/slave select\n|          (0: read backdrop from EXT pins; 1: output color on EXT pins)\n+--------- Generate an NMI at the start of the\n           vertical blanking interval (0: off; 1: on)
+G:2001:PpuMask_2001:7  bit  0\n---- ----\nBGRs bMmG\n|||| ||||\n|||| |||+- Display type: (0: color, 1: grayscale)\n|||| ||+-- 1: Show background in leftmost 8 pixels of screen, 0: Hide\n|||| |+--- 1: Show sprites in leftmost 8 pixels of screen, 0: Hide\n|||| +---- 1: Show background\n|||+------ 1: Show sprites\n||+------- Emphasize red\n|+-------- Emphasize green\n+--------- Emphasize blue
+G:2002:PpuStatus_2002:7  bit  0\n---- ----\nVSO. ....\n|||| ||||\n|||+-++++- Least significant bits previously written into a PPU register\n|||        (due to register not being updated for this address)\n||+------- Sprite overflow. The intent was for this flag to be set\n||         whenever more than eight sprites appear on a scanline, but a\n||         hardware bug causes the actual behavior to be more complicated\n||         and generate false positives as well as false negatives; see\n||         PPU sprite evaluation. This flag is set during sprite\n||         evaluation and cleared at dot 1 (the second dot) of the\n||         pre-render line.\n|+-------- Sprite 0 Hit.  Set when a nonzero pixel of sprite 0 overlaps\n|          a nonzero background pixel; cleared at dot 1 of the pre-render\n|          line.  Used for raster timing.\n+--------- Vertical blank has started (0: not in vblank; 1: in vblank).\n           Set at dot 1 of line 241 (the line *after* the post-render\n           line, false); cleared after reading $2002 and at dot 1 of the\n           pre-render line.
+G:2003:OamAddr_2003:Set OAM address - Write only
+G:2004:OamData_2004:Read/Write OAM data
+G:2005:PpuScroll_2005:Set PPU scroll, write twice - Write only
+G:2006:PpuAddr_2006:Set PPU address, write twice - Write only
+G:2007:PpuData_2007:Read/Write VRAM
+G:4000:Sq0Duty_4000:DDLC VVVV\nDuty (D), envelope loop / length counter halt (L), constant volume (C), volume/envelope (V)
+G:4001:Sq0Sweep_4001:EPPP NSSS\nSweep unit: enabled (E), period (P), negate (N), shift (S)
+G:4002:Sq0Timer_4002:TTTT TTTT\nTimer low (T)
+G:4003:Sq0Length_4003:LLLL LTTT\nLength counter load (L), timer high (T)
+G:4004:Sq1Duty_4004:DDLC VVVV\nDuty (D), envelope loop / length counter halt (L), constant volume (C), volume/envelope (V)
+G:4005:Sq1Sweep_4005:EPPP NSSS\nSweep unit: enabled (E), period (P), negate (N), shift (S)
+G:4006:Sq1Timer_4006:TTTT TTTT\nTimer low (T)
+G:4007:Sq1Length_4007:LLLL LTTT\nLength counter load (L), timer high (T)
+G:4008:TrgLinear_4008:CRRR RRRR\nLength counter halt / linear counter control (C), linear counter load (R)
+G:400A:TrgTimer_400A:TTTT TTTT\nTimer low (T)
+G:400B:TrgLength_400B:LLLL LTTT\nLength counter load (L), timer high (T)
+G:400C:NoiseVolume_400C:--LC VVVV\nEnvelope loop / length counter halt (L), constant volume (C), volume/envelope (V)
+G:400E:NoisePeriod_400E:L--- PPPP\nLoop noise (L), noise period (P)
+G:400F:NoiseLength_400F:LLLL L---\nLength counter load (L)
+G:4010:DmcFreq_4010:IL-- RRRR\nIRQ enable (I), loop (L), frequency (R)
+G:4011:DmcCounter_4011:-DDD DDDD\nLoad counter (D)
+G:4012:DmcAddress_4012:AAAA AAAA\nSample address (A)
+G:4013:DmcLength_4013:LLLL LLLL\nSample length (L)
+G:4014:SpriteDma_4014:Writing $XX will upload 256 bytes of data from CPU page $XX00-$XXFF to the internal PPU OAM.
+G:4015:ApuStatus_4015:Read:\nIF-D NT21\nDMC interrupt (I), frame interrupt (F), DMC active (D), length counter > 0 (N/T/2/1)\n\nWrite:\n---D NT21\nEnable DMC (D), noise (N), triangle (T), and pulse channels (2/1)
+G:4016:Ctrl1_4016:Read (NES - input):\n---4 3210\nRead data from controller port #1.\n\nWrite:\n---- ---A\nOutput data (strobe) to both controllers.
+G:4017:Ctrl2_FrameCtr_4017:Read (NES - input):\n---4 3210\nRead data from controller port #2.\n\nWrite (Frame counter): MI-- ----\nMode (M, 0 = 4-step, 1 = 5-step), IRQ inhibit flag (I)
